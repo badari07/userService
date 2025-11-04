@@ -1,10 +1,14 @@
 package com.example.userservice.controler;
 
 
-import com.example.userservice.dto.LoginResDTOP;
-import com.example.userservice.dto.SignResponseDTO;
-import com.example.userservice.dto.SignUpReqDTO;
+import com.example.userservice.dto.*;
+
+import com.example.userservice.service.AuthService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,19 +16,48 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/auth")
 public class AuthControler {
+    private final AuthService authService;
 
+
+    public AuthControler(AuthService authService) {
+        this.authService = authService;
+    }
 
     @PostMapping("/sign_up")
-    public SignResponseDTO signUp(SignUpReqDTO signUpReqDTO){
+    public ResponseEntity<SignResponseDTO> signUp(SignUpReqDTO Request){
 
-        return null;
+        SignResponseDTO response = new SignResponseDTO();
+
+        try {
+            if ( authService.signUp(Request.email, Request.password)){
+                response.setStatus(RequestStatus.SUCCESS);
+
+            }else {
+                response.setStatus(RequestStatus.FAILURE);
+            }
+
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+
+        } catch (Exception e) {
+            response.setStatus(RequestStatus.FAILURE);
+
+            return  new ResponseEntity<>(response, HttpStatus.CONFLICT);
+
+        }
 
     }
 
 
     @PostMapping("/login")
-    public ResponseEntity<SignResponseDTO>  login(LoginResDTOP loginResDTOP){
-        return null;
+    public ResponseEntity<LoginResDTO>  login(LoginReqDTO request ){
+        String token = authService.login(request.getEmail(), request.getPassword());
+        LoginResDTO logDTO = new LoginResDTO();
+        logDTO.setStatus(RequestStatus.SUCCESS);
+        MultiValueMap <String, String> headers = new LinkedMultiValueMap<>();
+        headers.add("AUTH_TOKEN", token);
+        ResponseEntity<LoginResDTO> response = new ResponseEntity<>(logDTO,headers, HttpStatus.OK);
+
+        return response;
 
     }
 }
