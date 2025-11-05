@@ -2,10 +2,13 @@ package com.example.userservice.service;
 
 
 import com.example.userservice.exception.UserAlredayExitExecption;
+import com.example.userservice.exception.WrongPasswordExecption;
 import com.example.userservice.models.User;
 import com.example.userservice.repository.UserRepoistory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 @Service
 public class AuthService {
@@ -32,7 +35,18 @@ public class AuthService {
     }
 
     public String login( String email, String password){
-        return  "token";
+
+        Optional<User> user = userRepository.findByEmail(email);
+        if(user.isEmpty()){
+            throw new UserAlredayExitExecption("User not found with email: " + email);
+        }
+       boolean matches = passwordEncoder.matches(password, user.get().getPassword());
+         if(!matches){
+                throw new WrongPasswordExecption("Wrong password for email: " + email);
+         }else {
+             return "token";
+         }
+
 
     }
 }

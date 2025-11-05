@@ -3,6 +3,8 @@ package com.example.userservice.controler;
 
 import com.example.userservice.dto.*;
 
+import com.example.userservice.exception.UserAlredayExitExecption;
+import com.example.userservice.exception.WrongPasswordExecption;
 import com.example.userservice.service.AuthService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -10,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -24,7 +27,7 @@ public class AuthControler {
     }
 
     @PostMapping("/sign_up")
-    public ResponseEntity<SignResponseDTO> signUp(SignUpReqDTO Request){
+    public ResponseEntity<SignResponseDTO> signUp(@RequestBody SignUpReqDTO Request){
 
         SignResponseDTO response = new SignResponseDTO();
 
@@ -49,15 +52,28 @@ public class AuthControler {
 
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResDTO>  login(LoginReqDTO request ){
-        String token = authService.login(request.getEmail(), request.getPassword());
-        LoginResDTO logDTO = new LoginResDTO();
-        logDTO.setStatus(RequestStatus.SUCCESS);
-        MultiValueMap <String, String> headers = new LinkedMultiValueMap<>();
-        headers.add("AUTH_TOKEN", token);
-        ResponseEntity<LoginResDTO> response = new ResponseEntity<>(logDTO,headers, HttpStatus.OK);
+    public ResponseEntity<LoginResDTO>  login(@RequestBody LoginReqDTO request){
 
-        return response;
+        try {
+            String token = authService.login(request.getEmail(), request.getPassword());
+            LoginResDTO logDTO = new LoginResDTO();
+            logDTO.setStatus(RequestStatus.SUCCESS);
+            MultiValueMap <String, String> headers = new LinkedMultiValueMap<>();
+            headers.add("AUTH_TOKEN", token);
+            ResponseEntity<LoginResDTO> response = new ResponseEntity<>(logDTO,headers, HttpStatus.OK);
+
+            return response;
+
+        } catch (WrongPasswordExecption ex){
+            LoginResDTO logDTO = new LoginResDTO();
+            logDTO.setStatus(RequestStatus.FAILURE);
+            return  new ResponseEntity<>(logDTO, HttpStatus.UNAUTHORIZED);
+        } catch (UserAlredayExitExecption ex){
+            LoginResDTO logDTO = new LoginResDTO();
+            logDTO.setStatus(RequestStatus.FAILURE);
+            return  new ResponseEntity<>(logDTO, HttpStatus.NOT_FOUND);
+        }
+
 
     }
 }
