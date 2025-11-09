@@ -1,6 +1,7 @@
 package com.example.userservice.service;
 
 
+import com.example.userservice.dto.SendEmailMsgDTO;
 import com.example.userservice.exception.UserAlredayExitExecption;
 import com.example.userservice.exception.WrongPasswordExecption;
 import com.example.userservice.dto.RequestStatus;
@@ -11,6 +12,8 @@ import com.example.userservice.models.SessionStatus;
 import com.example.userservice.models.User;
 import com.example.userservice.repository.SessionRepository;
 import com.example.userservice.repository.UserRepoistory;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,14 +31,20 @@ public class AuthService {
     private BCryptPasswordEncoder passwordEncoder;
     private JwtService jwtService;
     private SessionRepository sessionRepository;
+    private KafkaTemplate<String, String> kafkaTemplate;
+    private ObjectMapper objectMapper;
+
 
     public AuthService(UserRepoistory userRepository, BCryptPasswordEncoder passwordEncoder, 
-                      JwtService jwtService, SessionRepository sessionRepository) {
+                      JwtService jwtService, SessionRepository sessionRepository, KafkaTemplate<String, String> kafkaTemplate,ObjectMapper objectMapper) {
         this.passwordEncoder = passwordEncoder;
         this.userRepository = userRepository;
         this.jwtService = jwtService;
         this.sessionRepository = sessionRepository;
+        this.kafkaTemplate = kafkaTemplate;
+        this.objectMapper = objectMapper;
     }
+
 
 
     public boolean signUp( String email, String password){
@@ -46,6 +55,19 @@ public class AuthService {
         User user = new User();
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(password));
+
+        SendEmailMsgDTO emailMsg = new SendEmailMsgDTO();
+        emailMsg.setTo(user.getEmail());
+        emailMsg.setSubject("Welcome to Our Service!");
+        emailMsg.setBody("Thank you for signing up with us. We're excited to have you on board.");
+
+        try {
+            String emailJson = objectMapper.writeValueAsString(emailMsg);
+            kafkaTemplate.send("send-email", emailJson);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send signup email", e);
+        }
+
         userRepository.save(user);
 
  return  true;
