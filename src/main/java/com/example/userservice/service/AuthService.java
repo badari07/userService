@@ -3,6 +3,8 @@ package com.example.userservice.service;
 
 import com.example.userservice.exception.UserAlredayExitExecption;
 import com.example.userservice.exception.WrongPasswordExecption;
+import com.example.userservice.dto.RequestStatus;
+import com.example.userservice.dto.ValidateTokenResDTO;
 import com.example.userservice.models.Role;
 import com.example.userservice.models.Session;
 import com.example.userservice.models.SessionStatus;
@@ -10,6 +12,8 @@ import com.example.userservice.models.User;
 import com.example.userservice.repository.SessionRepository;
 import com.example.userservice.repository.UserRepoistory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -81,5 +85,47 @@ public class AuthService {
         sessionRepository.save(session);
         
         return token;
+    }
+
+    public ResponseEntity<ValidateTokenResDTO> validateToken(String token) {
+        ValidateTokenResDTO response = new ValidateTokenResDTO();
+
+        try {
+            if (token == null || token.trim().isEmpty()) {
+                response.setStatus(RequestStatus.FAILURE);
+                response.setIsValid(false);
+                response.setMessage("Token is required");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            }
+
+            Boolean isValid = jwtService.validateToken(token);
+
+            if (Boolean.TRUE.equals(isValid)) {
+                String email = jwtService.extractEmail(token);
+                String userId = jwtService.extractUserId(token);
+                List<String> roles = jwtService.extractRoles(token);
+                Date expiration = jwtService.extractExpiration(token);
+
+                response.setStatus(RequestStatus.SUCCESS);
+                response.setIsValid(true);
+                response.setEmail(email);
+                response.setUserId(userId);
+                response.setRoles(roles);
+                response.setExpirationTime(expiration.getTime());
+                response.setMessage("Token is valid");
+
+                return ResponseEntity.status(HttpStatus.OK).body(response);
+            } else {
+                response.setStatus(RequestStatus.FAILURE);
+                response.setIsValid(false);
+                response.setMessage("Token is invalid or expired");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
+        } catch (Exception e) {
+            response.setStatus(RequestStatus.FAILURE);
+            response.setIsValid(false);
+            response.setMessage("Error validating token: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
     }
 }
